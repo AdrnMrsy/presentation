@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Cleaning and Preparation Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --ink-900: #0f172a;
+            --ink-700: #334155;
+            --ink-500: #64748b;
+            --surface: rgba(255, 255, 255, 0.74);
+            --surface-strong: rgba(255, 255, 255, 0.9);
+            --line: rgba(15, 23, 42, 0.1);
+            --brand: #0f766e;
+            --brand-2: #0ea5e9;
+            --brand-soft: rgba(15, 118, 110, 0.12);
+            --shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+        }
+
+        body.app-body {
+            font-family: 'Manrope', sans-serif;
+            color: var(--ink-900);
+            background: radial-gradient(1200px 500px at 0% 0%, #cffafe 0%, rgba(207, 250, 254, 0) 60%),
+                        radial-gradient(800px 500px at 100% 10%, #dbeafe 0%, rgba(219, 234, 254, 0) 65%),
+                        linear-gradient(145deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+        }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 9999px;
+            filter: blur(55px);
+            opacity: 0.45;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .orb-a { width: 18rem; height: 18rem; top: -5rem; right: -3rem; background: #22d3ee; }
+        .orb-b { width: 20rem; height: 20rem; bottom: -7rem; left: -6rem; background: #38bdf8; }
+
+        h1, h2, h3, h4 {
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.42s ease-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        aside {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.75));
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+
+        .nav-link {
+            border: 1px solid transparent;
+            color: var(--ink-700);
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            border-color: rgba(14, 165, 233, 0.25);
+            background: rgba(255, 255, 255, 0.7);
+            transform: translateX(2px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
+            color: #ffffff;
+            border-color: transparent;
+            border-radius: 0.6rem;
+            box-shadow: 0 10px 20px rgba(14, 165, 233, 0.28);
+        }
+
+        main .bg-white {
+            background: var(--surface-strong);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+
+        code {
+            background: #e0f2fe;
+            color: #075985;
+            border-color: rgba(14, 116, 144, 0.2);
+        }
+
+        /* Interactive Workflow Styles */
+        .step-item { transition: all 0.2s ease; cursor: pointer; }
+        .step-item:hover { transform: translateX(3px); }
+        .step-item:hover .step-circle { background-color: #ecfeff; border-color: var(--brand-2); }
+        .step-item.active .step-circle { background-color: var(--brand-2); border-color: var(--brand-2); color: white; box-shadow: 0 0 0 4px #dbeafe; }
+        .step-item.active .step-title { color: var(--brand); font-weight: 700; }
+        .step-line { position: absolute; left: 1.25rem; top: 2.5rem; bottom: -1rem; width: 2px; background-color: #dbeafe; z-index: 0; }
+        .last-step .step-line { display: none; }
+
+        #step-details-content {
+            transition: opacity 0.3s ease;
+            background: linear-gradient(160deg, rgba(236, 254, 255, 0.75), rgba(224, 242, 254, 0.42));
+            border: 1px solid rgba(14, 165, 233, 0.2);
+        }
+
+        @media (max-width: 900px) {
+            body.app-body {
+                display: block;
+                height: auto;
+                overflow: auto;
+            }
+
+            aside {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+            }
+
+            aside nav {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+
+            main {
+                padding: 1.1rem;
+            }
+
+            .nav-link:hover {
+                transform: none;
+            }
+        }
+    </style>
+</head>
+<body class="app-body antialiased flex h-screen overflow-hidden">
+
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+
+    <aside class="w-72 flex flex-col z-10">
+        <div class="p-6 border-b border-gray-200">
+            <div class="inline-block text-[10px] uppercase tracking-[0.18em] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full px-3 py-1 mb-3">Data Science Presentation</div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight leading-tight">Data Cleaning and Preparation Analysis</h1>
+            <p class="text-xs text-slate-600 mt-2">Spaceship Titanic Dataset Workflow</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="showPage('exploration', this)" class="nav-link w-full text-left px-4 py-3 text-sm font-medium rounded-md text-slate-700">01 / Part 1: Exploration</button>
+            <button onclick="showPage('strategy', this)" class="nav-link w-full text-left px-4 py-3 text-sm font-medium rounded-md text-slate-700">02 / Part 2: Strategy</button>
+            <button onclick="showPage('workflow', this)" class="nav-link active w-full text-left px-4 py-3 text-sm font-medium rounded-md">03 / Part 3: Workflow</button>
+            <button onclick="showPage('conclusion', this)" class="nav-link w-full text-left px-4 py-3 text-sm font-medium rounded-md text-slate-700">04 / Conclusion</button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-8 lg:p-12 relative z-10">
+        
+        <div id="exploration" class="page max-w-6xl mx-auto">
+            <div class="mb-6">
+                <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full px-3 py-1 mb-3">Part 1</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Dataset Exploration</h2>
+                <p class="text-slate-600 text-sm md:text-base">What students should identify before any preprocessing begins.</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Columns</p>
+                    <p class="text-2xl font-extrabold text-slate-900 mt-1">14</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Target</p>
+                    <p class="text-base font-bold text-slate-900 mt-1">Transported</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Duplicates</p>
+                    <p class="text-2xl font-extrabold text-emerald-700 mt-1">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Missingness</p>
+                    <p class="text-base font-bold text-rose-700 mt-1">~180-220/col</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                <div class="lg:col-span-3 bg-white p-6 rounded-xl border border-slate-200">
+                    <h3 class="text-lg font-semibold mb-4 text-cyan-800">Variables and Encodings</h3>
+                    <p class="text-sm text-slate-600 mb-4">There are 14 columns and the target variable is <code class="bg-gray-100 px-1 rounded border border-gray-200">Transported</code>.</p>
+                    <div class="space-y-3 text-sm text-slate-700">
+                        <p><strong>Columns:</strong> PassengerId, HomePlanet, CryoSleep, Cabin, Destination, Age, VIP, RoomService, FoodCourt, ShoppingMall, Spa, VRDeck, Name, Transported</p>
+                        <p><strong>Categorical needing encoding:</strong> HomePlanet, Destination, CryoSleep, VIP</p>
+                        <p><strong>Target mapping:</strong> Transported (True/False) should be mapped to 1/0</p>
+                    </div>
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800">HomePlanet</span>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800">Destination</span>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800">CryoSleep</span>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800">VIP</span>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200">
+                    <h3 class="text-lg font-semibold mb-4 text-cyan-800">Outlier Snapshot</h3>
+                    <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                        <p class="text-xs uppercase tracking-wide text-indigo-700 font-bold mb-2">RoomService Distribution</p>
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div class="bg-white rounded-md border border-indigo-100 p-2">
+                                <p class="text-[10px] uppercase text-slate-500">Median</p>
+                                <p class="text-lg font-extrabold text-slate-900">0</p>
+                            </div>
+                            <div class="bg-white rounded-md border border-indigo-100 p-2">
+                                <p class="text-[10px] uppercase text-slate-500">75th %</p>
+                                <p class="text-lg font-extrabold text-slate-900">47</p>
+                            </div>
+                            <div class="bg-white rounded-md border border-indigo-100 p-2">
+                                <p class="text-[10px] uppercase text-slate-500">Max</p>
+                                <p class="text-lg font-extrabold text-rose-700">14327</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl border border-slate-200">
+                <h3 class="text-lg font-semibold mb-4 text-cyan-800">Data Irregularities</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
+                    <div class="rounded-lg p-4 border border-rose-200 bg-rose-50">
+                        <p><span class="font-bold text-rose-700">Missing Values:</span> Heavy missingness across almost every column except PassengerId and Transported (roughly 180 to 220 missing records per column).</p>
+                    </div>
+                    <div class="rounded-lg p-4 border border-amber-200 bg-amber-50">
+                        <p><span class="font-bold text-amber-700">Inconsistent Formats:</span> Cabin stores Deck/Number/Side in one string (example: <code class="bg-gray-100 px-1 rounded border border-gray-200">B/0/P</code>). PassengerId stores group/member in one string (example: <code class="bg-gray-100 px-1 rounded border border-gray-200">0001_01</code>).</p>
+                    </div>
+                    <div class="rounded-lg p-4 border border-emerald-200 bg-emerald-50">
+                        <p><span class="font-bold text-emerald-700">Duplicate Records:</span> 0 exact duplicate rows.</p>
+                    </div>
+                    <div class="rounded-lg p-4 border border-fuchsia-200 bg-fuchsia-50">
+                        <p><span class="font-bold text-fuchsia-700">Extreme Values / Outliers:</span> Spending columns are severely right-skewed. Example: RoomService has median = 0, 75th percentile = 47, but maximum = 14,327.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="strategy" class="page max-w-6xl mx-auto">
+            <div class="mb-6">
+                <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full px-3 py-1 mb-3">Part 2</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Data Cleaning Strategy</h2>
+                <p class="text-slate-600 text-sm md:text-base">Expected student recommendations with practical preprocessing choices.</p>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 mb-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-semibold text-emerald-800">Mode for categorical</div>
+                    <div class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-semibold text-sky-800">Median for numerical</div>
+                    <div class="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-semibold text-violet-800">IQR/Boxplot outliers</div>
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-semibold text-amber-800">Scale before modeling</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="bg-white p-6 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-cyan-100 text-cyan-800 p-3 rounded-full h-11 w-11 flex items-center justify-center font-bold">1</div>
+                        <h3 class="text-lg font-semibold text-slate-900">Handling Missing Values</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mt-1">Do <strong>not</strong> drop rows with missing values because missingness is spread across most columns. Impute categorical variables (HomePlanet, Destination, CryoSleep, VIP) with the <strong>mode</strong>, and numerical variables (Age, RoomService, FoodCourt, ShoppingMall, Spa, VRDeck) with the <strong>median</strong>.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-cyan-100 text-cyan-800 p-3 rounded-full h-11 w-11 flex items-center justify-center font-bold">2</div>
+                        <h3 class="text-lg font-semibold text-slate-900">Feature Engineering & Binning</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mt-1">Use domain-based Age bins: Child (0-12), Teenager (13-17), Young Adult (18-35), Adult (36-55), Senior (55+). Create <code class="bg-gray-100 px-1 rounded">Total_Spent</code> by summing RoomService, FoodCourt, ShoppingMall, Spa, and VRDeck.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-cyan-100 text-cyan-800 p-3 rounded-full h-11 w-11 flex items-center justify-center font-bold">3</div>
+                        <h3 class="text-lg font-semibold text-slate-900">Outlier Detection & Treatment</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mt-1">Use IQR or boxplots to detect outliers in spending columns. Prefer <strong>capping</strong> or <strong>log transformation</strong> over row deletion because high spenders are likely valid observations, not data-entry errors.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-cyan-100 text-cyan-800 p-3 rounded-full h-11 w-11 flex items-center justify-center font-bold">4</div>
+                        <h3 class="text-lg font-semibold text-slate-900">Normalization / Scaling</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mt-1">Scale numerical variables so large spending ranges do not dominate model learning (for example, Age 0-79 versus FoodCourt 0-29,813). Use Standardization (Z-score) or Min-Max scaling.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="workflow" class="page active max-w-6xl mx-auto">
+            <div class="mb-6">
+                <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full px-3 py-1 mb-3">Part 3</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Proposed Data Cleaning Workflow</h2>
+                <p class="text-slate-600 text-sm md:text-base">Ideal order for preprocessing. Click each step to explore the pipeline details. Missing values should be handled before scaling/normalization.</p>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-8 bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-[500px]">
+                
+                <div class="w-full md:w-5/12 border-r border-gray-100 pr-4 relative" id="stepper-container">
+                    </div>
+
+                <div class="w-full md:w-7/12 pl-4 flex flex-col justify-center">
+                    <div id="step-details-content" class="bg-slate-50 border border-slate-200 p-8 rounded-lg shadow-inner">
+                        <div class="uppercase tracking-wide text-xs text-indigo-500 font-bold mb-1" id="detail-step-num">Step 1</div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4" id="detail-title">Feature Engineering / Parsing</h3>
+                        
+                        <div class="mb-6">
+                            <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Action Taken</h4>
+                            <p class="text-gray-700 leading-relaxed" id="detail-action">Split Cabin into Deck, Num, and Side, and split PassengerId to extract group size and related grouping signals. Perform this first so engineered fields are cleaned with the rest of the dataset.</p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Affected Columns</h4>
+                            <div class="flex flex-wrap gap-2" id="detail-columns">
+                                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium border border-indigo-200">Cabin</span>
+                                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium border border-indigo-200">PassengerId</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <div id="conclusion" class="page max-w-6xl mx-auto">
+            <div class="mb-6">
+                <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full px-3 py-1 mb-3">Part 4</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Conclusion: Cleaning and Preparation Analysis</h2>
+                <p class="text-slate-600 text-sm md:text-base">Final readiness summary after exploration, strategy, and ordered preprocessing workflow.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-emerald-700 font-bold">Data Quality</p>
+                    <p class="text-sm text-slate-700 mt-2">Missingness handled with robust imputation strategy.</p>
+                </div>
+                <div class="bg-white rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-cyan-700 font-bold">Feature Robustness</p>
+                    <p class="text-sm text-slate-700 mt-2">Outliers treated without removing valid high-value behavior.</p>
+                </div>
+                <div class="bg-white rounded-xl border border-violet-200 bg-violet-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-violet-700 font-bold">Model Readiness</p>
+                    <p class="text-sm text-slate-700 mt-2">Encoding and scaling complete for balanced learning input.</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 bg-gradient-to-br from-white to-indigo-50">
+                <div class="flex items-start gap-4 mb-6">
+                    <div class="h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center border border-green-200 flex-shrink-0">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900">Dataset Prepared for Reliable Modeling</h3>
+                        <p class="text-gray-600 mt-1">The cleaning and preparation analysis confirms that the dataset is now structured, consistent, and model-ready without discarding meaningful passenger behavior.</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm leading-relaxed">
+                    <div class="rounded-lg border border-slate-200 bg-white/70 p-4 text-gray-700">
+                        <p><strong>Final conclusion:</strong> The preprocessing plan resolves core quality issues by parsing mixed-format fields, imputing missing values with robust statistics, and preserving valid high-spend cases through capping/log transformation strategies.</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-white/70 p-4 text-gray-700">
+                        <p>Feature quality is improved through Age binning and total spending aggregation, while non-informative raw fields are removed after extraction. Categorical variables are encoded and numerical features are scaled so no single feature range dominates learning.</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-white/70 p-4 text-gray-700">
+                        <p>This ordered workflow reduces bias from missingness, limits distortion from extreme values, and produces a balanced analytical dataset suitable for downstream machine learning evaluation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- 1. Navigation Logic ---
+        function showPage(pageId, element) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            document.getElementById(pageId).classList.add('active');
+            element.classList.add('active');
+        }
+
+        // --- 2. Interactive Workflow Logic ---
+        const workflowData = [
+            { id: 1, title: "Feature Engineering / Parsing", action: "Split Cabin into Deck, Num, and Side. Split PassengerId to extract group size/group number information. This is first so new columns can be cleaned with the rest.", columns: ["Cabin", "PassengerId", "Deck", "Num", "Side", "Group"] },
+            { id: 2, title: "Handle Missing Values", action: "Impute numerical columns with the median and categorical columns with the mode. Avoid dropping rows because missingness is distributed across many columns.", columns: ["Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "HomePlanet", "Destination", "CryoSleep", "VIP"] },
+            { id: 3, title: "Handle Outliers", action: "Use IQR/boxplot diagnostics on spending columns. Apply capping or log transformation instead of deleting rows, since high spenders may represent valid behavior.", columns: ["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"] },
+            { id: 4, title: "Binning", action: "Create age brackets: Child (0-12), Teenager (13-17), Young Adult (18-35), Adult (36-55), Senior (55+).", columns: ["Age", "Age_Bin"] },
+            { id: 5, title: "Drop Unnecessary Columns", action: "Drop Name and the original Cabin column after parsing because they are no longer useful in raw form.", columns: ["Name", "Cabin"] },
+            { id: 6, title: "Encode Categorical Variables", action: "Apply One-Hot Encoding (or label mapping where appropriate) to HomePlanet, Destination, CryoSleep, and VIP. Map Transported from True/False to 1/0.", columns: ["HomePlanet", "Destination", "CryoSleep", "VIP", "Transported"] },
+            { id: 7, title: "Normalize", action: "Apply Min-Max scaling (or Standardization) to numerical columns so features on larger scales do not dominate model training.", columns: ["Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck", "Total_Spent"] }
+        ];
+
+        const stepperContainer = document.getElementById('stepper-container');
+        
+        // Build the stepper UI
+        function renderStepper() {
+            stepperContainer.innerHTML = '';
+            workflowData.forEach((step, index) => {
+                const isLast = index === workflowData.length - 1;
+                const html = `
+                    <div class="step-item relative flex items-start mb-6 ${isLast ? 'last-step' : ''}" onclick="updateDetails(${step.id})">
+                        <div class="step-line"></div>
+                        <div class="step-circle relative z-10 flex-shrink-0 w-10 h-10 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center font-bold text-gray-500 transition-colors">
+                            ${step.id}
+                        </div>
+                        <div class="ml-4 mt-2">
+                            <h4 class="step-title text-gray-600 font-medium text-lg transition-colors">${step.title}</h4>
+                        </div>
+                    </div>
+                `;
+                stepperContainer.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // Update the right panel when a step is clicked
+        function updateDetails(stepId) {
+            const step = workflowData.find(s => s.id === stepId);
+            const contentDiv = document.getElementById('step-details-content');
+            
+            // Fade out
+            contentDiv.style.opacity = 0;
+            
+            setTimeout(() => {
+                // Update text
+                document.getElementById('detail-step-num').innerText = `Step ${step.id}`;
+                document.getElementById('detail-title').innerText = step.title;
+                document.getElementById('detail-action').innerText = step.action;
+                
+                // Update columns pills
+                const colsHtml = step.columns.map(c => `<span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium border border-indigo-200">${c}</span>`).join('');
+                document.getElementById('detail-columns').innerHTML = colsHtml;
+                
+                // Update active state on stepper
+                document.querySelectorAll('.step-item').forEach((item, idx) => {
+                    if (idx + 1 === stepId) item.classList.add('active');
+                    else item.classList.remove('active');
+                });
+                
+                // Fade back in
+                contentDiv.style.opacity = 1;
+            }, 150); // slight delay for smooth transition
+        }
+
+        // Initialize
+        renderStepper();
+        updateDetails(1); // Select first step by default
+    </script>
+</body>
+</html>
